@@ -1,0 +1,43 @@
+{
+  "version": "1.3.1",
+  "updated_at": "2026-10-22",
+  "status": "bootstrap",
+  "agent": {
+    "skill": "design",
+    "instructions": "Read this contract before editing the whiteboard. Use src/tokens.css for shared visual values. Keep project preview styling inside adapters. Update this file when the visual contract changes; verify through non-browser checks and leave browser verification to the user."
+  },
+  "intent": {
+    "treatment": "utilitarian",
+    "direction": "A Figma-style inspection workspace with quiet panels and a dotted infinite canvas.",
+    "signature": "Named independent frames containing real project views, with blue selection outlines."
+  },
+  "sources": ["src/tokens.css", "README.md", "AGENTS.md"],
+  "constraints": {
+    "always": ["Separate board shell styling from project preview styling", "Use semantic data-n attributes", "Scroll tracks touch panel edges", "Provide keyboard access to frame details", "Mark missing preview fixtures explicitly"],
+    "never": ["Put preview implementation into project business code", "Automate a browser", "Render project CSS outside the preview ShadowRoot", "Use iframe for previews", "Use external fonts or live backend data"]
+  },
+  "policy": { "if_missing": "invent_with_note", "hierarchy": ["readability", "interaction", "spacing", "color"] },
+  "tokens": {
+    "source": "src/tokens.css",
+    "brand": "--frui-color-primary",
+    "surface": "--frui-color-surface",
+    "canvas": "--frui-color-canvas",
+    "text": "--frui-color-text",
+    "muted": "--frui-color-muted",
+    "border": "--frui-color-border-soft",
+    "display": "--frui-font-family; frame names 28px",
+    "body": "--frui-font-family; --frui-font-size-sm",
+    "utility": "--agent-font-mono",
+    "spacing": "--frui-space-1 through --frui-space-6",
+    "radius": "--frui-radius-control and --frui-radius-card"
+  },
+  "themes": { "modes": ["light", "dark"], "default": "light" },
+  "voice": { "language": "zh-CN", "style": "Short action labels; describe pending fixtures and demo data plainly." },
+  "components": {
+    "frame": { "title": "above the artboard", "selection": "brand outline", "interaction": "capture pointer only after 6px of movement; double-click the title or use explicit enter button for details; page content remains interactive", "rendering": "mount real DOM in an open ShadowRoot; use container queries for width breakpoints" },
+    "catalog": { "layout": "grouped searchable list", "scroll": "edge-aligned internal padding" },
+    "inspector": { "layout": "fixed title and scrolling properties", "notes": "show per-frame demo data scope and confirmed adapter limitations" },
+    "detail": { "primitive": "native dialog", "tabs": ["interactive preview", "source"], "widths": [1200, 768, 390] },
+    "node_picker": { "shortcut": "Alt / Option + drag in frame detail", "alternative": "visible toggle in fixed detail header", "selection": "brand outline and translucent brand fill; no page mutation", "results": "edge-aligned scrolling panel with semantic node identity, selector, text, geometry and HTML", "copy": "explicit JSON clipboard action or real DOM console action", "dismiss": "Escape clears before closing the dialog; scroll or resize invalidates old geometry" }
+  }
+}

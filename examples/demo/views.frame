@@ -1,0 +1,8 @@
+import { HomeView, CounterView } from './views.js';
+import { CounterModel } from './counter.model.js';
+
+export const _Preview = [
+  { name: '首页 · 桌面', path: '/home/desktop', width: 1000, height: 720, render() { return HomeView(CounterModel()); } },
+  { name: '首页 · 手机', path: '/home/mobile', width: 390, height: 720, render() { return HomeView(CounterModel()); } },
+  { name: '计数器', path: '/home/components/counter', render() { return CounterView(CounterModel()); } },
+];

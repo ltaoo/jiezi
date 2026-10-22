@@ -1,0 +1,8 @@
+:host { font-family: system-ui, sans-serif; color: var(--frui-color-text); background: var(--frui-color-canvas); }
+* { box-sizing: border-box; }
+[data-n="demo-home"], [data-n="demo-counter"] { padding: 24px; }
+[data-n="demo-home-description"] { max-width: 48ch; line-height: 1.7; color: var(--frui-color-muted); }
+[data-n="demo-counter"] { border: 1px solid var(--frui-color-border); border-radius: 12px; background: var(--frui-color-surface); }
+[data-n="demo-counter-increment"] { padding: 10px 20px; border: 0; border-radius: 6px; background: var(--frui-color-primary); color: var(--frui-color-on-primary); font: inherit; cursor: pointer; }
+[data-n="demo-counter-increment"]:focus-visible { outline: 2px solid var(--frui-color-focus); outline-offset: 3px; }
+@container preview-size (max-width: 500px) { [data-n="demo-home"] { padding: 12px; } }
