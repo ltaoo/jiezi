@@ -1,7 +1,8 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { preview_declarations } from '../../src/preview-declarations.mjs';
+import { shadow_styles } from '../../src/shadow_styles.mjs';
 
 const directory = dirname(fileURLToPath(import.meta.url));
 
@@ -13,6 +14,10 @@ export default function demo_adapter({ source }) {
     entry_points: { adapter: join(directory, 'direct.js') },
     assets: [{ from: join(source, 'preview.css'), to: 'preview.css' }],
     watch: [source, directory],
+    async after_build(dist) {
+      const path = join(dist, 'preview.css');
+      await writeFile(path, shadow_styles(await readFile(path, 'utf8')));
+    },
     async catalog() {
       const code = await readFile(join(source, 'views.frame'), 'utf8');
       return preview_declarations(code).map(item => ({

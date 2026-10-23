@@ -1,11 +1,15 @@
 import postcss from 'postcss';
+import { viewport_values } from './viewport-styles.js';
 
-// 只改选择器和宽度断点，保留属性值及业务 utility class。
+// 保留业务 utility class，将视口尺寸绑定到 Frame。
 export function shadow_styles(css) {
   const stylesheet = postcss.parse(css);
   stylesheet.walkRules(rule => {
     rule.selector = rule.selector
       .replace(/:root((?:\[[^\]]+\]|:not\([^)]*\))*)/g, (_match, condition) => condition ? `:host(${condition})` : ':host');
+  });
+  stylesheet.walkDecls(declaration => {
+    declaration.value = viewport_values(declaration.value);
   });
   stylesheet.walkAtRules('media', rule => {
     if (/^(?:screen\s+and\s+)?\((?:max-|min-)?width\s*:[^)]+\)(?:\s+and\s+\((?:max-|min-)?width\s*:[^)]+\))*$/.test(rule.params)) {
