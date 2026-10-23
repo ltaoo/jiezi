@@ -12,10 +12,13 @@ npm run dev -- --adapter xiaoxunrss --source /path/to/xiaoxunrss
 
 npm run dev -- --adapter xiaoxunrss --source /path/to/xiaoxunrss --port 39980
 npm run build -- --adapter xiaoxunrss --source /path/to/xiaoxunrss
-JIEZI_TEST_SOURCE=/path/to/xiaoxunrss npm run test:integration
+# 集成测试从 project.json 读取 xiaoxunrss 的绝对路径
+npm run test:integration
 ```
 
-业务项目也需要安装自己的依赖。源码和适配器修改后自动重建，刷新查看；适配器配置或服务脚本改变后重启服务。产物保存在 `dist/<adapter-id>/`，构建成功后原子替换。
+业务项目也需要安装自己的依赖。源码和适配器修改后自动重建，刷新查看；适配器配置或服务脚本改变后重启服务。产物保存在 `dist/xiaoxunrss-<source-hash>/`，构建成功后原子替换。
+
+也可先在芥子运行 `npm run dev`，再从顶部「添加项目」选择「小讯 · Timeless」，填写业务项目的本机绝对目录。打开流程沿用显式 `--source` 的构建入口，检查资源后切换画布与源码监听；失败时保留原项目。已添加项目可通过顶部下拉框切换，列表在重启后保留。同一服务当前打开的项目由所有标签页共享，切换后其他标签页需刷新。
 
 ## 添加页面或组件预览
 
@@ -89,7 +92,7 @@ Frame 按需加载模块，加载结束后检查取消信号、示例名称和 p
 
 每个 Frame 有开放的 ShadowRoot。业务 CSS 的 `:root` 转为 `:host`，`body` 选择器保留原样，不套用到预览容器；纯宽度媒体查询转为容器查询，指针类型查询保留原意。明暗主题同步到各宿主。
 
-frui 通过 Timeless Scope 捕获当前 Frame 的宿主。Modal、Dialog、Select 和菜单使用 Frame 内的 Portal，浮层矩形转换到 Frame 坐标；页面不覆盖全局 host。白板与详情各自创建新实例。
+frui 通过 Timeless Scope 捕获当前 Frame 的宿主。Modal、Dialog、Select 和菜单使用 Frame 内的 Portal，浮层矩形转换到 Frame 坐标；页面不覆盖全局 host。点击 Frame 进入 `/project/:uid/frame/:frame_id`（Frame 路径整体编码）时复用已挂载实例，在同一画板中放大展示；预览继续禁用业务交互，标题、源码和节点检查工具以固定浮层展示。
 
 ## 路径目录树与画布分组
 
@@ -117,16 +120,18 @@ export const _Preview = [
 
 ## 操作与节点框选
 
-画板中的 Frame 内容仅展示，禁用鼠标和键盘交互；进入详情后可交互和框选节点。
+总览和详情中的 Frame 内容均仅展示，禁用业务鼠标和键盘交互；详情支持画板平移、缩放及点选 / 框选节点。
 
 - 空白处拖动 / 滚轮平移；空格拖动可在 Frame 上平移。
 - Ctrl / ⌘ + 滚轮或底部按钮缩放；`F` 适应画布。
-- 拖动 Frame 标题移动，双击标题、目录或按 Enter 打开详情。
+- 拖动 Frame 标题移动，点击 Frame、双击目录或按 Enter 打开详情。
 - 详情切换 1200 / 768 / 390px 宽度，查看源码。
-- 在详情按住 Alt / Option 拖动，或点击「框选节点」选择实际 DOM。
+- 在详情按住 Alt / Option 点击或拖动，或启用「选择节点」点选 / 框选实际 DOM。
 - Esc 清除选区或退出框选，再按一次关闭详情。
 
-框选结果包含入口文件、节点语义、相对选择器、文本、尺寸与 HTML，可复制 JSON 或打印 Element。支持开放的嵌套 ShadowRoot；` >>> ` 表示进入 ShadowRoot，不是原生 CSS 运算符。最多输出 200 个节点，文本限 240 字符、HTML 限 20,000 字符，截断明确标记。来源文件是 Frame 入口，尚未映射每个节点的源码行列。
+选择结果包含入口文件、节点语义、相对选择器、文本、尺寸、HTML 和节点源码位置，可复制 JSON 或打印 Element。支持开放的嵌套 ShadowRoot；` >>> ` 表示进入 ShadowRoot，不是原生 CSS 运算符。最多输出 200 个节点，文本限 240 字符、HTML 限 20,000 字符，截断明确标记。
+
+源码位置由芥子统一编译追踪，再通过 Timeless 视图与 DOM 的绑定记录，不依赖 attributes 配置。面板展示相对于 `--source` 的 `file:line:column`，行列从 1 开始；JSON 的 `source` 包含 `{ file, line, column }`，`source_details` 包含声明范围和使用位置。循环实例共享声明位置，不按语义名称猜测来源。未追踪的运行时内部节点显示「未记录源码位置」，`source` 为 `null`。这里只显示位置，不调用编辑器服务，详见[统一追踪说明](../../README.md#节点源码追踪)。
 
 ## 接入其他项目
 
@@ -136,6 +141,6 @@ export const _Preview = [
 
 ## 验证范围
 
-`JIEZI_TEST_SOURCE=/path/to/xiaoxunrss npm run test:integration` 使用实际 Timeless Core / DOM / Web 运行时和 Node DOM 模型，覆盖全部示例挂载与销毁、多示例隔离、登录错误状态、内存传输、浮层作用域、加载取消、错误处理、主题、CSS 转换、节点框选和静态服务边界。目录与布局测试覆盖声明校验、路径 ID、重复路径 / 无效元数据、自动文件夹、顶层目录分组、组内多层组件、动态边界、搜索祖先保留、折叠恢复、键盘导航与树节点语义。测试禁止预览调用真实 fetch。
+`npm run test:integration` 从根目录 `project.json` 读取小讯项目的绝对路径，使用实际 Timeless Core / DOM / Web 运行时和 Node DOM 模型，覆盖全部示例挂载与销毁、多示例隔离、登录错误状态、内存传输、浮层作用域、加载取消、错误处理、主题、CSS 转换、节点框选和静态服务边界。目录与布局测试覆盖声明校验、路径 ID、重复路径 / 无效元数据、自动文件夹、顶层目录分组、组内多层组件、动态边界、搜索祖先保留、折叠恢复、键盘导航与树节点语义。测试禁止预览调用真实 fetch。
 
 这些测试不启动浏览器、不执行布局引擎。实际排版、焦点、媒体、缩放时浮层位置与滚动裁切仍需手动验收；Node 中显式矩形检查只验证坐标换算。按小讯项目约定，不自动化浏览器。

@@ -1,41 +1,62 @@
-# 芥子（jiezi）
+<p align="center" data-n="readme-brand">
+  <img src="src/logo.svg" width="72" height="72" alt="芥子 Logo：开放画框与金色芥子" data-n="readme-logo">
+</p>
 
-把前端页面和组件展开在同一张白板上，直观浏览、比较和检查。支持路径目录树、拖动、缩放、搜索、主题、响应式尺寸切换和真实 DOM 节点框选。
+# 芥子 · jiezi
 
-这是独立项目。安装、默认构建、启动与单元测试只使用本目录和 npm 依赖，不需要任何相邻仓库。默认附带原生 DOM 示例：桌面首页、手机首页和独立计数器，每次挂载都有自己的 Model。
+**把前端页面和组件，展开在同一张白板上。**
 
-## 启动
+芥子是一个本地运行的前端预览与检查工具。将真实页面、组件和不同状态并排展示，在画布中浏览、比较、调整尺寸，再从 DOM 节点定位到源码。
 
-需要 Node.js 20 或更新版本。
+[快速开始](#快速开始) · [使用白板](#使用白板) · [声明预览](#声明预览) · [接入项目](#接入项目) · [使用指南](docs/guide.md)
+
+![芥子白板预览：左侧为页面与组件目录，中间并排展示真实页面和弹窗，右侧展示 Frame 信息](docs/images/whiteboard.png)
+
+*FindRSS 管理后台示例：26 个页面、21 个组件，展示 mock 数据、空状态和独立弹窗。*
+
+## 能做什么
+
+- **集中查看页面与组件**：按路径组织目录和画布分组，搜索名称、路径或源码文件。
+- **在画布上比较状态**：拖动、平移、缩放，在页面、空状态和弹窗之间快速切换视线。
+- **检查响应式布局**：进入 Frame 详情，切换 1200 / 768 / 390px 宽度，也可在声明中指定尺寸。
+- **从界面追到源码**：点选、框选真实 DOM，查看节点信息与源码；点击源码行反向选择节点。
+- **隔离预览环境**：每个 Frame 使用独立 ShadowRoot，支持浅色与深色主题，错误在各自 Frame 中展示。
+- **管理多个本地项目**：通过适配器接入业务源码，保存项目清单、独立布局和可直接访问的 Frame 地址。
+
+预览默认进入选择模式，用于展示和检查；详情工具栏可切换到交互模式，实际操作页面、输入和滚动，切换时保留页面状态。业务数据和依赖由适配器提供；内置示例可独立运行。
+
+## 快速开始
+
+需要 **Node.js 20+** 和 npm。在项目根目录运行：
 
 ```sh
-cd /path/to/jiezi
 npm ci
 npm run dev
-# http://127.0.0.1:39980
-
-npm run build
-npm test
 ```
 
-默认适配器为 `demo`，示例在 `examples/demo/`。源码变更后自动重建，刷新查看；适配器配置或服务脚本变更后需重启。静态产物在 `dist/<adapter-id>/`，成功后原子替换。服务只监听本机，不提供业务后端。
+打开 [http://127.0.0.1:39980](http://127.0.0.1:39980)，即可看到内置的桌面首页、手机首页和计数器组件，无需配置外部项目。
+
+源码变更后自动重建，刷新查看；也可点击「刷新画板」手动构建。修改适配器配置或服务脚本后需重启。服务只监听本机，不提供业务后端。
 
 ## 使用白板
 
-- 空白处拖动或滚轮平移；空格拖动可在 Frame 上平移。
-- Ctrl / ⌘ + 滚轮或底部按钮缩放；`F` 适应画布。
-- 拖动 Frame 标题移动；双击标题、目录或按 Enter 打开详情。
-- 详情切换 1200 / 768 / 390px 宽度，查看源码。
-- 详情按住 Alt / Option 拖动，或点击「框选节点」，选择实际 DOM。
-- Esc 清除选区或退出框选，再按一次关闭详情。
+| 操作 | 方式 |
+| --- | --- |
+| 平移画布 | 拖动空白处、滚轮，或按住空格拖动 |
+| 缩放画布 | Ctrl / ⌘ + 滚轮，或底部缩放按钮 |
+| 适应画布 | 按 `F` 或点击「适应画布」 |
+| 移动 Frame | 拖动 Frame 标题 |
+| 进入详情 | 双击 Frame 或目录条目；选中目录条目后按 Enter |
+| 检查 DOM | 在详情中点选或框选；退出选择后可按 Alt / Option 临时选择 |
+| 逐层退出 | 按 Esc 清除选区、退出选择、关闭源码面板或返回画板 |
 
-画布中的内容仅展示，进入详情后可交互。Frame 有独立的开放 ShadowRoot，业务 CSS 不影响白板。低缩放比例显示摘要，同屏最多挂载 8 个真实视图。加载失败和运行错误只显示在对应 Frame 内；卸载时取消加载并释放资源。
+详情中可切换设备宽度、查看源码和节点 JSON。「刷新」只更新画布内容，保留当前地址、视口和设备宽度；预览中的临时业务状态会重置。
 
-框选结果包含入口文件、节点语义、相对选择器、文本、尺寸与 HTML，可复制 JSON 或打印 Element。开放的嵌套 ShadowRoot 用 ` >>> ` 分隔路径；这不是原生 CSS 运算符。最多输出 200 个节点，文本限 240 字符、HTML 限 20,000 字符，截断明确标记。来源是 Frame 入口，尚未映射每个节点的源码行列。
+更多行为见[画布操作](docs/guide.md#使用白板)和[源码追踪](docs/guide.md#节点源码追踪)。
 
 ## 声明预览
 
-内置示例使用 `.frame` 文件，内容是 JavaScript：
+内置示例在 `examples/demo/views.frame` 中声明预览，文件内容是 JavaScript：
 
 ```js
 import { CounterModel } from './counter.model.js';
@@ -47,47 +68,59 @@ export const _Preview = [
     path: '/home/components/counter',
     width: 390,
     height: 500,
-    render() { return CounterView(CounterModel()); },
+    render() { return () => CounterView(CounterModel()); },
   },
 ];
 ```
 
-也接受 `_Previews`；同一模块二者选一，单独声明数组字面量。`name` 和 `path` 必须是非空静态字符串；`width`、`height` 可选且必须为正数。`render()` 同步、无必填参数，在每次调用中创建独立 Model 和 View。元数据通过 AST 读取，扫描不执行模块或 render。
+`name` 是展示名称，`path` 是唯一身份并决定目录层级；`render()` 返回视图或创建视图的工厂，每次挂载可创建独立 Model。扫描时只读取元数据，不执行模块或渲染函数。
 
-`path` 是目录树与 Frame 的唯一身份，与业务 URL 和源码位置无关。`/` 分隔层级，必须全局唯一，不接受空段、尾斜杠、`.`、`..`、query 或 hash。改名或调整数组顺序不会改变身份；修改 path 会产生新身份。路径自动生成文件夹，画布按顶层目录分组。目录与画布按树的前序遍历排列，折叠不改变顺序。搜索匹配名称、路径和源码路径，并保留祖先目录。
+这是内置适配器使用的声明方式；其他项目的扫描和挂载由各自适配器负责。详见[预览声明规范](docs/guide.md#声明预览)。
 
-布局按项目和 path 存储在浏览器本地。保留历史 `frontend-agent:<project-id>:layout:v4` 键，以继续读取已有画布位置。
+## 接入项目
 
-## 接入业务项目
+启动开发服务后，点击顶部「添加项目」，选择类型并填写本机绝对目录。已添加项目可从顶部下拉框切换。
 
-通过适配器接入框架和业务源码，不在白板核心中导入业务代码。已有的[小讯适配器](adapters/xiaoxunrss/README.md)是可选接入，必须显式指定源码目录：
+| 适配器 | 源码目录 | 说明 |
+| --- | --- | --- |
+| `demo` | 留空即可使用内置示例 | 原生 DOM，独立 Model / View |
+| `xiaoxunrss` | 小讯项目根目录 | [接入说明](adapters/xiaoxunrss/README.md) |
+| `findrss-admin` | FindRSS 项目的 `admin/` | [接入说明](adapters/findrss-admin/README.md) |
+| `wx-channels` | Download & Manage 的 `frontend/` | [接入说明](adapters/wx-channels/README.md) |
 
-```sh
-npm run dev -- --adapter xiaoxunrss --source /path/to/xiaoxunrss
-npm run build -- --adapter xiaoxunrss --source /path/to/xiaoxunrss
-```
-
-外部项目自行安装它的依赖。芥子不会猜测相邻目录，也不会使用外部项目的 esbuild 替代自己的依赖。
-
-新增适配器放在 `adapters/<id>/adapter.mjs`，默认导出接收 `{ source }` 的工厂，返回：
-
-- `id`、`title`、`source`、`logo`（SVG 文件路径）。
-- `catalog()`：返回目录条目。条目包含 `id === path`、`name`、`title`、`kind: 'page' | 'component'`、`file`、`source`、`preview: 'direct' | 'source'` 和可选尺寸及 `layout: 'fill'`。
-- `entry_points.adapter`：渲染模块入口；其他键可提供额外 esbuild 入口。
-- 可选的 `runtime_scripts`、`stylesheets`、`assets: [{ from, to }]`、esbuild `plugins`、`watch` 目录和 `after_build(dist)`。
-
-渲染模块导出 `mount(frame, root, { signal, on_error })`，可同步或异步返回清理函数。加载或渲染失败可抛出异常；挂载后的错误用 `on_error` 回传。需要异步加载的适配器应在加载结束后检查 signal，销毁后的迟到结果不能再挂载。
-
-业务状态由 Model 维护，View 只渲染并调用 Model 方法。动态节点带明确的 `data-n`，使节点框选结果可读。示例不访问真实账号数据或后端，业务样式保留在 Frame 的 ShadowRoot 内。
-
-## 验证
-
-`npm test` 使用项目内示例、临时文件和 Node DOM 模型，覆盖目录声明校验、分组与排列、搜索、键盘导航、拖动、缩放、布局存储、挂载与销毁、错误隔离、主题、节点框选和静态服务边界。内置示例测试同时检查打包输入均在本项目内。
-
-外部业务集成测试单独运行：
+也可从命令行指定适配器与源码目录，例如将下面路径替换为自己的项目目录：
 
 ```sh
-JIEZI_TEST_SOURCE=/path/to/xiaoxunrss npm run test:integration
+npm run dev -- --adapter findrss-admin --source /path/to/findrss-worker/admin
 ```
 
-这些测试不启动浏览器，不执行布局引擎。实际排版、焦点、媒体、缩放时浮层位置与滚动裁切由人工验收。
+外部项目需先安装自己的依赖，并通过 `--source` 显式接入。默认安装、构建和测试只使用本仓库及其 npm 依赖。
+
+项目清单保存在不入 Git 的 `project.json` 中，链接使用持久项目 ID。每个开发服务同一时间打开一个项目，切换会影响该服务的其他标签页。项目管理、刷新、深链接和自定义适配器见[使用指南](docs/guide.md)。
+
+## 开发与验证
+
+项目采用原生 JavaScript、Model / View 分离、esbuild 构建，以及基于 Node.js 的测试。新增节点应提供明确的 `data-n` 语义标识，白板样式使用 [tokens.css](src/tokens.css)。
+
+```sh
+npm test
+npm run build
+```
+
+默认测试使用项目内示例、临时文件和 Node DOM 模型。内置构建输出位于 `dist/demo/`；外部项目按适配器与源码目录区分输出，构建成功后原子替换。`dist/` 与 `node_modules/` 不提交。
+
+外部业务集成测试单独运行，从本机 `project.json` 读取对应适配器的首个项目：
+
+| 命令 | 验证对象 |
+| --- | --- |
+| `npm run test:integration` | 小讯适配器 |
+| `npm run test:admin` | FindRSS 管理后台 |
+| `npm run test:wx` | Download & Manage |
+
+测试不执行浏览器布局引擎，实际排版、焦点、媒体和滚动裁切需人工验收。当前源码追踪支持 JavaScript 编译输入，TS / JSX、第三方运行时生成节点等限制见[源码追踪说明](docs/guide.md#节点源码追踪)。
+
+提交问题时请附上适配器类型、复现步骤和错误信息；修改代码后运行默认测试与构建。项目约定见 [AGENTS.md](AGENTS.md)。
+
+---
+
+文档结构参考 [Best-README-Template](https://github.com/othneildrew/Best-README-Template) 与 [GitHub README 指南](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-readmes)。
