@@ -44,3 +44,22 @@ export function frame_group_bounds(frames) {
     width: Math.max(...frames.map(frame => frame.x + frame.width)) + 32 - x,
     height: Math.max(...frames.map(frame => frame.y + frame.height)) + 32 - y };
 }
+
+export function separate_frame_groups(frames) {
+  const groups = new Map(), placed = [];
+  for (const frame of frames) {
+    if (!groups.has(frame.group_id)) groups.set(frame.group_id, []);
+    groups.get(frame.group_id).push(frame);
+  }
+  for (const items of groups.values()) {
+    const bounds = frame_group_bounds(items), original_y = bounds.y;
+    for (const previous of placed.sort((a, b) => a.y - b.y)) {
+      if (bounds.x < previous.x + previous.width && bounds.x + bounds.width > previous.x &&
+          bounds.y < previous.y + previous.height && bounds.y + bounds.height > previous.y) {
+        bounds.y = previous.y + previous.height + 116;
+      }
+    }
+    for (const frame of items) frame.y += bounds.y - original_y;
+    placed.push(bounds);
+  }
+}

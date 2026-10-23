@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-labelledby="jiezi-logo-title jiezi-logo-desc" data-n="jiezi-logo">
+  <title id="jiezi-logo-title" data-n="jiezi-logo-title">芥子 jiezi</title>
+  <desc id="jiezi-logo-desc" data-n="jiezi-logo-description">蓝色底上的白色开放画框与金色芥子，寓意从微小组件展开无限画布。</desc>
+  <rect width="64" height="64" rx="16" fill="#2563eb" data-n="jiezi-logo-background"/>
+  <path d="M34 16H23a7 7 0 0 0-7 7v18a7 7 0 0 0 7 7h18a7 7 0 0 0 7-7V30" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" data-n="jiezi-logo-frame"/>
+  <circle cx="47" cy="17" r="6" fill="#facc15" data-n="jiezi-logo-seed"/>
+</svg>

@@ -6,6 +6,8 @@ import { build } from 'esbuild';
 import { parseHTML } from 'linkedom';
 import { load_adapter, options_from_args, root } from '../build.mjs';
 import { create_direct_preview } from '../src/direct-preview.js';
+import { node_source_location } from '../src/node-selection.js';
+import { source_details } from '../src/source-runtime.js';
 
 test('默认示例来自项目内部，外部适配器必须显式指定源码目录', () => {
   const options = options_from_args([]);
@@ -45,6 +47,9 @@ test('内置示例仅打包项目内文件，Model 隔离且可挂载、交互�
     previews[0].root.querySelector('button').dispatchEvent(new window.Event('click'));
     assert.equal(previews[0].root.querySelector('[data-n="demo-counter-value"]').textContent, '当前计数：1');
     assert.equal(previews[1].root.querySelector('[data-n="demo-counter-value"]').textContent, '当前计数：0');
+    const button = previews[0].root.querySelector('button');
+    assert.deepEqual(node_source_location(button), { file: 'views.js', line: 2, column: 19 });
+    assert.ok(source_details(button).usages.some(source => source.file === 'views.js' && source.line === 13 && source.column === 18));
     previews[0].set_theme('dark');
     assert.equal(previews[0].host.dataset.theme, 'dark');
     assert.equal(previews[1].host.dataset.theme, 'light');

@@ -8,10 +8,10 @@ import { build } from 'esbuild';
 import { webcrypto } from 'node:crypto';
 import { create_direct_preview } from '../../src/direct-preview.js';
 import { shadow_styles } from '../../src/shadow_styles.mjs';
-import { load_adapter, options_from_args, root } from '../../build.mjs';
+import { load_adapter, root } from '../../build.mjs';
+import { configured_project_options } from '../../project-config.mjs';
 
-if (!process.env.JIEZI_TEST_SOURCE) throw new Error('请设置 JIEZI_TEST_SOURCE 为待预览的小讯源码目录');
-const adapter = await load_adapter(options_from_args(['--adapter', 'xiaoxunrss', '--source', process.env.JIEZI_TEST_SOURCE]));
+const adapter = await load_adapter(await configured_project_options('xiaoxunrss'));
 const catalog = await adapter.catalog();
 const frame = catalog.find(item => item.exported === 'SettingsAboutPage');
 const ai_frame = catalog.find(item => item.exported === 'SettingsAIPage');

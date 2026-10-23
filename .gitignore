@@ -1,2 +1,5 @@
 node_modules/
 dist/
+.jiezi/
+/project.json
+/project.json.tmp-*

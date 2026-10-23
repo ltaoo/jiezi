@@ -5,10 +5,10 @@ import { join } from 'node:path';
 import vm from 'node:vm';
 import * as esbuild from 'esbuild';
 import { load_adapter, options_from_args, root } from '../../build.mjs';
+import { configured_project_options } from '../../project-config.mjs';
 import { collect_catalog, preview_registry } from '../../adapters/xiaoxunrss/catalog.mjs';
 
-if (!process.env.JIEZI_TEST_SOURCE) throw new Error('请设置 JIEZI_TEST_SOURCE 为待预览的小讯源码目录');
-const options = options_from_args(['--adapter', 'xiaoxunrss', '--source', process.env.JIEZI_TEST_SOURCE]);
+const options = await configured_project_options('xiaoxunrss');
 const adapter = await load_adapter(options);
 const catalog = await adapter.catalog();
 
