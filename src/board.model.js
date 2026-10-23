@@ -67,9 +67,18 @@ export function BoardModel(catalog, storage, project_id = 'default', project_uid
       if (state.detail) return state.detail.frame ? [state.detail.frame] : [];
       return frames.filter(frame => (state.filter === 'all' || (state.filter === 'page' && !!frame.group_root) || state.filter === frame.kind || (state.filter === 'direct' && frame.preview === 'direct')) && matches(frame));
     },
-    groups() {
+    preview_frames(width, height) {
+      if (state.detail) return state.detail.frame?.preview === 'direct' ? [state.detail.frame] : [];
+      const { x, y, scale } = state.view;
+      if (scale < 0.2) return [];
+      return this.visible().filter(frame => frame.preview === 'direct' &&
+        frame.x * scale + x < width + 100 && (frame.x + frame.width) * scale + x > -100 &&
+        frame.y * scale + y < height + 100 && (frame.y + frame.height) * scale + y > -100).slice(0, 8);
+    },
+    groups(group_id) {
       const groups = new Map();
       for (const frame of this.visible()) {
+        if (group_id !== undefined && frame.group_id !== group_id) continue;
         if (!groups.has(frame.group_id)) groups.set(frame.group_id, { id: frame.group_id, title: frame.group_title, frames: [] });
         groups.get(frame.group_id).frames.push(frame);
       }

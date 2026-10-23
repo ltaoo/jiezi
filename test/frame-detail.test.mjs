@@ -83,7 +83,7 @@ export async function load_preview(document, project) {
   } }],
 });
 
-async function fixture(path = '/project/demo-id', frames = catalog, project_overrides = {}, open_project) {
+async function fixture(path = '/project/demo-id', frames = catalog, project_overrides = {}, open_project, timers = {}) {
   const { document, window } = parseHTML('<html><head></head><body><div id="app" data-n="board-app"></div></body></html>');
   Object.defineProperty(window.HTMLSelectElement.prototype, 'value', { configurable: true, writable: true, value: '' });
   Object.defineProperties(window.HTMLElement.prototype, {
@@ -119,6 +119,7 @@ async function fixture(path = '/project/demo-id', frames = catalog, project_over
       if (path === '/sources.json') return { ok: true, json: async () => ({ uid: 'demo-id', files: { 'view.js': Array.from({ length: 60 }, (_, index) => `const line_${index + 1} = '<b>原始代码</b>';`).join('\n') } }) };
       return { ok: true, json: async () => path === '/catalog.json' ? frames : path === '/project.json' ? { id: 'demo', uid: 'demo-id', title: '测试项目', runtime_scripts: [], stylesheets: [], ...project_overrides } : request?.method === 'POST' ? { id: JSON.parse(request.body).id || 'demo-id', title: '测试项目', pages: 1, components: 1 } : { projects: [{ id: 'demo-id', adapter: 'demo', title: '测试项目', source: '' }, { id: 'rss-id', adapter: 'xiaoxunrss', title: '小讯', source: '/rss' }] } };
     },
+    ...timers,
   };
   try { await vm.runInNewContext(`(async () => { ${bundled.outputFiles[0].text}\n })()`, runtime); }
   catch (error) { error.fixture = { document, location, requests, preview_mounts }; throw error; }
@@ -127,6 +128,81 @@ async function fixture(path = '/project/demo-id', frames = catalog, project_over
   const emit = (target, type, properties = {}) => { const event = new window.Event(type, { bubbles: true, cancelable: true }); Object.assign(event, properties); target.dispatchEvent(event); return event; };
   return { document, window, location, history, query, emit, preview_mounts, preview_unmounts, requests };
 }
+
+function paint_clock() {
+  const jobs = new Map(); let now = 0, next_id = 0;
+  const timers = {
+    setTimeout(callback, delay = 0) { const id = ++next_id; jobs.set(id, { callback, time: now + delay }); return id; },
+    clearTimeout(id) { jobs.delete(id); },
+    requestAnimationFrame(callback) { return timers.setTimeout(callback, 16); },
+  };
+  return { timers, advance(duration) {
+    const end = now + duration;
+    while (true) {
+      const next = [...jobs].sort((a, b) => a[1].time - b[1].time)[0];
+      if (!next || next[1].time > end) break;
+      const [id, job] = next; jobs.delete(id); now = job.time; job.callback();
+    }
+    now = end;
+  } };
+}
+
+test('平移每帧只更新视口，长按期间保留预览，松手后统一更新', async () => {
+  const clock = paint_clock(), f = await fixture(undefined, undefined, undefined, undefined, clock.timers);
+  const stage = f.query('whiteboard-workspace'), world = f.query('whiteboard-world');
+  const preview = f.query('direct-preview'), original = world.style.transform;
+  const frame_styles = [...world.querySelectorAll('.frame, .board-page-group')].map(node => node.getAttribute('style'));
+  const mounts = { ...f.preview_mounts }, unmounts = { ...f.preview_unmounts };
+  let dimension_reads = 0;
+  Object.defineProperties(stage, {
+    clientWidth: { get() { dimension_reads++; return 1280; } },
+    clientHeight: { get() { dimension_reads++; return 900; } },
+  });
+  f.emit(stage, 'pointerdown', { button: 0, pointerId: 1, clientX: 0, clientY: 0 });
+  f.emit(f.window, 'pointermove', { pointerId: 1, clientX: -5000, clientY: 0 });
+  f.emit(f.window, 'pointermove', { pointerId: 1, clientX: -6000, clientY: 0 });
+  assert.equal(world.style.transform, original);
+  clock.advance(16);
+  assert.notEqual(world.style.transform, original);
+  assert.equal(dimension_reads, 0);
+  assert.deepEqual([...world.querySelectorAll('.frame, .board-page-group')].map(node => node.getAttribute('style')), frame_styles);
+  clock.advance(500);
+  assert.equal(f.query('direct-preview'), preview);
+  assert.deepEqual(f.preview_mounts, mounts); assert.deepEqual(f.preview_unmounts, unmounts);
+  f.emit(f.window, 'pointerup', { pointerId: 1 });
+  clock.advance(119); assert.equal(f.query('direct-preview'), preview);
+  clock.advance(1); assert.equal(f.query('direct-preview'), null);
+  assert.ok(f.preview_unmounts[preview.dataset.frameId] > 0);
+});
+
+test('滚轮平移与缩放合并绘制，只在最后一次事件后更新预览', async () => {
+  const clock = paint_clock(), f = await fixture(undefined, undefined, undefined, undefined, clock.timers);
+  const stage = f.query('whiteboard-workspace'), world = f.query('whiteboard-world'), preview = f.query('direct-preview');
+  const wheel = properties => f.emit(stage, 'wheel', { clientX: 640, clientY: 450, deltaX: 0, deltaY: 0, ...properties });
+  const original = world.style.transform;
+  wheel({ deltaX: 6000 }); wheel({ ctrlKey: true, deltaY: 1000 });
+  assert.equal(world.style.transform, original);
+  clock.advance(16); assert.notEqual(world.style.transform, original);
+  clock.advance(84); wheel({ deltaX: 20 });
+  clock.advance(119); assert.equal(f.query('direct-preview'), preview);
+  clock.advance(1); assert.equal(f.query('direct-preview'), null);
+});
+
+test('拖动 Frame 只重绘自身和所属组，取消后恢复且不重建预览', async () => {
+  const clock = paint_clock(), f = await fixture(undefined, undefined, undefined, undefined, clock.timers);
+  const title = f.query('frame-title'), frame = title.closest('.frame'), group = f.document.querySelector(`[data-group-id="${frame.dataset.id}"]`);
+  const preview = frame.querySelector('[data-n="direct-preview"]');
+  const initial = frame.style.transform, group_initial = group.style.transform;
+  const others = [...f.document.querySelectorAll('.frame, .board-page-group')].filter(node => node !== frame && node !== group);
+  const styles = others.map(node => node.getAttribute('style'));
+  f.emit(title, 'pointerdown', { button: 0, pointerId: 1, clientX: 0, clientY: 0 });
+  f.emit(f.window, 'pointermove', { pointerId: 1, clientX: 60, clientY: 40 }); clock.advance(16);
+  assert.notEqual(frame.style.transform, initial); assert.notEqual(group.style.transform, group_initial);
+  assert.deepEqual(others.map(node => node.getAttribute('style')), styles);
+  f.emit(f.window, 'pointercancel', { pointerId: 1 }); clock.advance(16);
+  assert.equal(frame.style.transform, initial); assert.equal(group.style.transform, group_initial);
+  clock.advance(120); assert.equal(frame.querySelector('[data-n="direct-preview"]'), preview);
+});
 
 test('目录默认展示全部 Frame，筛选行移除，标题旁仅保留一个展开收起图标', async () => {
   const f = await fixture();

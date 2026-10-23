@@ -124,8 +124,10 @@ const mounted_previews = new Map();
 const preview_errors = new Map();
 let detail_tools;
 let preview_load;
-const canvas_drag = create_canvas_drag(workspace, { get_view: () => state.view, on_change: schedule_paint, on_frame_drop: () => model.persist() });
+const canvas_drag = create_canvas_drag(workspace, { get_view: () => state.view, on_change: schedule_paint, on_end: schedule_paint, on_frame_drop: () => model.persist() });
+const dirty_frames = new Set();
 let paint_request = 0;
+let preview_timer;
 let query_timer;
 
 function center() { return { x: workspace.clientWidth / 2, y: workspace.clientHeight / 2 }; }
@@ -205,8 +207,22 @@ function render_frames() {
   }
   paint();
 }
-function schedule_paint() { if (!paint_request) paint_request = requestAnimationFrame(() => { paint_request = 0; paint(); }); }
-function paint() {
+function schedule_paint(frame) {
+  if (frame) dirty_frames.add(frame);
+  if (!paint_request) paint_request = requestAnimationFrame(() => {
+    paint_request = 0;
+    paint_view();
+    const groups = new Set();
+    for (const frame of dirty_frames) { paint_frame(frame); groups.add(frame.group_id); }
+    for (const id of groups) for (const group of model.groups(id)) paint_group(group);
+    dirty_frames.clear();
+    detail_tools?.refresh_selection();
+  });
+  clearTimeout(preview_timer);
+  // 移动时保留当前预览，避免业务 DOM 的挂载/销毁挤占动画帧。
+  preview_timer = setTimeout(() => { if (!canvas_drag.active) sync_previews(); }, 120);
+}
+function paint_view() {
   const interactive = Boolean(state.detail?.frame && !state.detail.picking);
   workspace.dataset.interactive = String(interactive);
   const { x, y, scale } = state.view;
@@ -214,29 +230,43 @@ function paint() {
   workspace.style.backgroundPosition = `${x}px ${y}px`;
   workspace.style.backgroundSize = `${24 * scale}px ${24 * scale}px`;
   zoom_label.textContent = `${Math.round(scale * 100)}%`;
-  for (const group of model.groups()) {
-    const node = group_nodes.get(group.id); if (!node) continue;
-    const { x, y, width, height } = group.bounds;
-    node.style.transform = `translate(${x}px, ${y}px)`;
-    node.style.width = `${width}px`; node.style.height = `${height}px`;
+}
+function paint_group(group) {
+  const node = group_nodes.get(group.id); if (!node) return;
+  const { x, y, width, height } = group.bounds;
+  node.style.transform = `translate(${x}px, ${y}px)`;
+  node.style.width = `${width}px`; node.style.height = `${height}px`;
+}
+function paint_frame(frame) {
+  const node = frame_nodes.get(frame.id); if (!node) return;
+  node.style.transform = `translate(${frame.x}px, ${frame.y}px)`;
+  node.style.width = `${model.frame_width(frame)}px`;
+}
+function sync_previews() {
+  if (canvas_drag.active) return;
+  const frames = model.preview_frames(workspace.clientWidth, workspace.clientHeight);
+  const ids = new Set(frames.map(frame => frame.id));
+  for (const [id, preview] of mounted_previews) if (!ids.has(id)) {
+    preview.destroy(); mounted_previews.delete(id); frame_nodes.get(id)?.classList.remove('has-preview');
   }
-  let live_count = 0;
-  for (const frame of model.visible()) {
+  const interactive = Boolean(state.detail?.frame && !state.detail.picking);
+  for (const frame of frames) {
     const node = frame_nodes.get(frame.id); if (!node) continue;
-    node.style.transform = `translate(${frame.x}px, ${frame.y}px)`;
-    node.style.width = `${model.frame_width(frame)}px`;
-    const visible = frame.x * scale + x < workspace.clientWidth + 100 && (frame.x + frame.width) * scale + x > -100 && frame.y * scale + y < workspace.clientHeight + 100 && (frame.y + frame.height) * scale + y > -100;
-    const render = frame.preview === 'direct' && (state.detail || visible && scale >= 0.2 && live_count++ < 8);
-    if (render && !mounted_previews.has(frame.id)) {
+    if (!mounted_previews.has(frame.id)) {
       const preview = preview_for(frame);
       mounted_previews.set(frame.id, preview); node.prepend(preview.host); node.classList.add('has-preview');
     }
     const preview = mounted_previews.get(frame.id);
     if (preview) { preview.host.inert = !interactive && preview.host.dataset.status !== 'error'; preview.set_size(model.frame_width(frame), frame.height); }
-    if (!render && mounted_previews.has(frame.id)) {
-      mounted_previews.get(frame.id).destroy(); mounted_previews.delete(frame.id); node.classList.remove('has-preview');
-    }
   }
+}
+function paint() {
+  clearTimeout(preview_timer);
+  for (const group of model.groups()) paint_group(group);
+  for (const frame of model.visible()) paint_frame(frame);
+  dirty_frames.clear();
+  paint_view();
+  sync_previews();
   detail_tools?.refresh_selection();
 }
 function catalog_node_select(node) {
@@ -347,6 +377,6 @@ window.addEventListener('keydown', event => {
 });
 window.addEventListener('keyup', event => { if (event.code === 'Space') { space_pressed = false; workspace.dataset.tool = state.tool; } });
 window.addEventListener('blur', () => { space_pressed = false; workspace.dataset.tool = state.tool; });
-new ResizeObserver(schedule_paint).observe(workspace);
+new ResizeObserver(() => schedule_paint()).observe(workspace);
 set_tool('select'); sync_route();
 if (!state.detail) { fit_initial(); if (model.visible()[0]) select(model.visible()[0]); }

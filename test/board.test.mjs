@@ -6,6 +6,32 @@ import { CatalogTreeModel } from '../src/catalog-tree.model.js';
 
 const frame = (path, title, kind = 'page', preview = 'direct') => ({ id: path, path, title, name: title, kind, file: `src${path}.frame`, preview });
 const catalog = [frame('/home/1', '首页'), frame('/frui/button', 'Button', 'component'), frame('/components/menu', 'Menu', 'component', 'source')];
+test('预览按视口和缩放筛选，保留边缘缓冲、八个上限及详情宽度', () => {
+  const items = Array.from({ length: 12 }, (_, index) => frame(`/home/${index}`, `页面 ${index}`));
+  items.push(frame('/home/source', '源码', 'component', 'source'));
+  const model = BoardModel(items, { getItem() {} });
+  for (const frame of model.state.frames) Object.assign(frame, { x: 0, y: 0, width: 300, height: 200 });
+  model.state.view = { x: 0, y: 0, scale: 1 };
+  assert.deepEqual(model.preview_frames(800, 600).map(frame => frame.id), model.state.frames.slice(0, 8).map(frame => frame.id));
+  Object.assign(model.state.frames[0], { x: -399 });
+  Object.assign(model.state.frames[1], { x: -400 });
+  Object.assign(model.state.frames[2], { x: 900 });
+  Object.assign(model.state.frames[3], { y: 700 });
+  Object.assign(model.state.frames[4], { y: -300 });
+  const visible = model.preview_frames(800, 600);
+  assert.ok(visible.includes(model.state.frames[0]));
+  for (const frame of model.state.frames.slice(1, 5)) assert.ok(!visible.includes(frame));
+  assert.ok(visible.every(frame => frame.preview === 'direct'));
+  model.state.view.scale = .19; assert.deepEqual(model.preview_frames(800, 600), []);
+  model.state.view.scale = .2; assert.ok(model.preview_frames(800, 600).length > 0);
+  model.state.query = '没有匹配'; assert.deepEqual(model.preview_frames(800, 600), []);
+  model.read_route(model.frame_url(items[1].id)); model.set_detail_width(390);
+  model.state.view = { x: -10000, y: -10000, scale: .08 };
+  assert.deepEqual(model.preview_frames(1, 1), [model.state.detail.frame]);
+  assert.equal(model.frame_width(model.state.detail.frame), 390);
+  model.read_route(model.frame_url('/home/source')); assert.deepEqual(model.preview_frames(800, 600), []);
+  model.read_route(model.frame_url('/missing')); assert.deepEqual(model.preview_frames(800, 600), []);
+});
 test('缩放保持指针下的世界坐标，并限制缩放范围', () => {
   const view = { x: -100, y: 80, scale: .5 }, point = { x: 300, y: 240 };
   const next = zoom_at(view, 1.5, point);
