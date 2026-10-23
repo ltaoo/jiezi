@@ -21,7 +21,8 @@ test('path 生成目录节点，两个页面示例同级，组件归入 componen
   assert.equal(model.get_parent('/background-queue/2').id, '/background-queue');
   assert.equal(model.get_parent('/background-queue/components/1').id, '/background-queue/components');
   assert.deepEqual(new Set(model.get_children('/background-queue').map(node => node.id)), new Set(['/background-queue/1', '/background-queue/2', '/background-queue/components']));
-  assert.ok(!ids(model).includes('/frui/button/1'));
+  assert.ok(ids(model).includes('/frui/button/1'));
+  assert.ok(ids(model).includes('/unused/1'));
   model.update('', 'all'); model.expand_all(true);
   assert.equal(ids(model).length, frames.length);
   assert.equal(new Set(ids(model)).size, frames.length);
@@ -57,11 +58,42 @@ test('方向键、Home/End 和外部选中展开定位使用 path', () => {
   const model = CatalogTreeModel(frames);
   model.rows(); model.navigate('End'); assert.equal(model.state.focused, model.rows().at(-1).key);
   model.navigate('Home'); assert.equal(model.state.focused, '/background-queue');
-  model.navigate('ArrowLeft'); assert.equal(model.rows().length, 1);
-  model.navigate('ArrowRight'); assert.ok(model.rows().length > 1);
+  model.navigate('ArrowLeft'); assert.ok(!ids(model).includes('/background-queue/1'));
+  const collapsed_count = model.rows().length;
+  model.navigate('ArrowRight'); assert.ok(model.rows().length > collapsed_count);
   model.reveal('/background-queue/components/fields/1');
   assert.ok(ids(model).includes('/background-queue/components/fields/1'));
   model.navigate('ArrowLeft'); assert.equal(model.state.focused, '/background-queue/components/fields');
+});
+
+test('单个图标按钮按目录实际状态切换展开与收起，并同步搜索和空目录状态', () => {
+  const { document, window } = parseHTML('<html><body><div data-n="tree-test"></div></body></html>');
+  const root = document.querySelector('div'), model = CatalogTreeModel(frames);
+  const tree = create_catalog_tree({ root, model, get_selected: () => null, on_select() {}, on_open() {} });
+  document.body.append(tree.toggle_button);
+  const click = node => node.dispatchEvent(new window.Event('click', { bubbles: true }));
+  tree.render();
+  assert.equal(tree.toggle_button.getAttribute('aria-label'), '收起全部');
+  assert.ok(tree.toggle_button.querySelector('svg[aria-hidden="true"]'));
+  assert.ok([...tree.toggle_button.querySelectorAll('*')].every(node => node.dataset.n));
+  const collapse_icon = tree.toggle_button.querySelector('path').getAttribute('d');
+  click(tree.toggle_button);
+  assert.deepEqual(ids(model), []);
+  assert.equal(tree.toggle_button.title, '展开全部');
+  assert.equal(tree.toggle_button.getAttribute('aria-expanded'), 'false');
+  assert.notEqual(tree.toggle_button.querySelector('path').getAttribute('d'), collapse_icon);
+  click(tree.toggle_button);
+  assert.equal(ids(model).length, frames.length);
+  click(root.querySelector('[data-key="/background-queue"] [data-n="catalog-tree-caret"]'));
+  assert.equal(tree.toggle_button.title, '展开全部');
+  click(tree.toggle_button);
+  assert.equal(ids(model).length, frames.length);
+  model.update('Button', 'all'); tree.render();
+  click(tree.toggle_button); assert.deepEqual(ids(model), []);
+  model.update('', 'all'); tree.render();
+  assert.equal(ids(model).length, frames.length);
+  model.update('missing', 'all'); tree.render();
+  assert.equal(tree.toggle_button.disabled, true);
 });
 
 test('树视图语义、目录展开、稳定节点、高亮与键盘事件隔离', () => {
@@ -95,4 +127,23 @@ test('树视图语义、目录展开、稳定节点、高亮与键盘事件隔�
   assert.equal(root.querySelectorAll('[tabindex="0"]').length, 1);
   model.update('no-such-node', 'all'); tree.render();
   assert.ok(root.querySelector('[data-n="catalog-tree-empty"]'));
+});
+
+
+test('排序值作用于目录和画板，同值与未指定值保持名称排序', () => {
+  const items = [
+    { ...frame('/frui/button/1', 'Button', 'component'), order: 1000 },
+    { ...frame('/scripts/1', '脚本'), order: 20 },
+    { ...frame('/discovery/2', '示例 2'), order: 10 },
+    { ...frame('/discovery/1', '示例 1'), order: 10 },
+    { ...frame('/discovery/components/form/1', '新增订阅源', 'component'), order: 10 },
+  ];
+  const model = CatalogTreeModel(items);
+  assert.deepEqual(model.groups().map(group => group.id), ['/discovery', '/scripts', '/frui']);
+  assert.deepEqual(model.ordered_frames().map(frame => frame.id), [
+    '/discovery/1', '/discovery/2', '/discovery/components/form/1', '/scripts/1', '/frui/button/1',
+  ]);
+  assert.deepEqual(CatalogTreeModel([...items].reverse()).ordered_frames(), model.ordered_frames());
+  const unspecified = CatalogTreeModel([frame('/z/1', 'Z'), frame('/a/1', 'A')]);
+  assert.deepEqual(unspecified.groups().map(group => group.id), ['/a', '/z']);
 });

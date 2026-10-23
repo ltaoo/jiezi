@@ -69,3 +69,17 @@ test('只扫描 .frame，path 是稳定 ID，改名/重排不改变身份，跨�
     await assert.rejects(collect_catalog(directory), /重复 path.*\/frui\/button/);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
+
+
+test('读取静态排序值，拒绝动态、负数和非有限数，保留原始预览索引', () => {
+  const source = `export const _Preview = [
+    { name: '后', path: '/later/1', order: 20, render() {} },
+    { name: '前', path: '/first/1', order: 0, render() {} },
+  ];`;
+  assert.deepEqual(preview_declarations(source).map(({ order, preview_index }) => ({ order, preview_index })), [
+    { order: 20, preview_index: 0 }, { order: 0, preview_index: 1 },
+  ]);
+  for (const order of ['-1', 'Infinity', 'NaN', '1e999', '"10"', 'get_order()', 'true', 'null']) {
+    assert.throws(() => preview_declarations(`export const _Preview = [{ name: '页面', path: '/page/1', order: ${order}, render() {} }];`), /order/);
+  }
+});

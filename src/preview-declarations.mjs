@@ -17,14 +17,17 @@ export function preview_declarations(source) {
     const metadata = { preview_index: index }, fields = new Set();
     for (const property of entry.properties) {
       const key = property.key?.name ?? property.key?.value;
-      if (property.type !== 'Property' || property.computed || property.kind !== 'init' || !['name', 'path', 'width', 'height', 'render'].includes(key) || fields.has(key)) {
-        throw new Error(`_Previews[${index}] 仅接受 name、path、width、height 和 render，且不可重复`);
+      if (property.type !== 'Property' || property.computed || property.kind !== 'init' || !['name', 'path', 'width', 'height', 'order', 'render'].includes(key) || fields.has(key)) {
+        throw new Error(`_Previews[${index}] 仅接受 name、path、width、height、order 和 render，且不可重复`);
       }
       fields.add(key);
       if (key === 'render') {
         if (!['FunctionExpression', 'ArrowFunctionExpression'].includes(property.value.type) || property.value.async || property.value.generator) {
           throw new Error(`_Previews[${index}].render 必须是同步函数`);
         }
+      } else if (key === 'order') {
+        if (property.value.type !== 'Literal' || !Number.isFinite(property.value.value) || property.value.value < 0) throw new Error(`_Previews[${index}].order 必须是非负有限数`);
+        metadata.order = property.value.value;
       } else if (key === 'width' || key === 'height') {
         if (property.value.type !== 'Literal' || !Number.isFinite(property.value.value) || property.value.value <= 0) throw new Error(`_Previews[${index}].${key} 必须是正数`);
         metadata[key] = property.value.value;

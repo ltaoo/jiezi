@@ -17,8 +17,11 @@ export function CatalogTreeModel(frames) {
   }
   for (const frame of frames) Object.assign(ensure(frame.path), { title: frame.title, frame });
   function sort(items) {
-    items.sort((a, b) => a.title.localeCompare(b.title, 'zh-CN', { numeric: true }) || a.key.localeCompare(b.key));
-    for (const node of items) sort(node.children);
+    for (const node of items) {
+      sort(node.children);
+      node.order = Math.min(node.frame?.order ?? Infinity, ...node.children.map(child => child.order));
+    }
+    items.sort((a, b) => a.order - b.order || a.title.localeCompare(b.title, 'zh-CN', { numeric: true }) || a.key.localeCompare(b.key));
   }
   sort(roots);
   function descendants(node) { return [...(node.frame ? [node.frame] : []), ...node.children.flatMap(descendants)]; }
@@ -26,7 +29,7 @@ export function CatalogTreeModel(frames) {
     const items = descendants(node);
     return { id: node.key, title: node.title, frames: items, page: items.some(frame => frame.kind === 'page') };
   });
-  const state = { query: '', filter: 'page', focused: null, expanded: new Set([...nodes.values()].filter(node => !node.frame).map(node => node.key)), search_expanded: new Map() };
+  const state = { query: '', filter: 'all', focused: null, expanded: new Set([...nodes.values()].filter(node => !node.frame).map(node => node.key)), search_expanded: new Map() };
   function matched(node, query) {
     return `${node.title} ${node.key}`.toLowerCase().includes(query.trim().toLowerCase()) || !!node.frame && matches_frame(node.frame, query);
   }
@@ -84,6 +87,8 @@ export function CatalogTreeModel(frames) {
         else state.expanded.delete(node.key);
       }
     },
+    all_expanded() { return rows().every(row => !row.children.length || row.open); },
+    toggle_all() { this.expand_all(!this.all_expanded()); },
     reveal(id) {
       if (!nodes.has(id)) return;
       for (let parent = parents.get(id); parent; parent = parents.get(parent.key)) {

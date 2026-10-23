@@ -2,6 +2,13 @@ export function create_catalog_tree({ root, model, get_selected, on_select, on_o
   const document = root.ownerDocument;
   root.setAttribute('role', 'tree');
   root.setAttribute('aria-label', '页面与组件目录');
+  const toggle_button = document.createElement('button');
+  toggle_button.dataset.n = 'catalog-tree-toggle'; toggle_button.className = 'catalog-tree-toggle'; toggle_button.type = 'button';
+  const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  for (const [name, value] of Object.entries({ 'data-n': 'catalog-tree-toggle-icon', viewBox: '0 0 24 24', width: '16', height: '16', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' })) icon.setAttribute(name, value);
+  const chevrons = document.createElementNS('http://www.w3.org/2000/svg', 'path'); chevrons.setAttribute('data-n', 'catalog-tree-toggle-chevrons');
+  icon.append(chevrons); toggle_button.append(icon);
+  toggle_button.addEventListener('click', () => { model.toggle_all(); render(); });
   function part(name, class_name, text) {
     const node = document.createElement('span');
     node.dataset.n = name; node.className = class_name; node.textContent = text;
@@ -13,6 +20,12 @@ export function create_catalog_tree({ root, model, get_selected, on_select, on_o
     const previous = new Map([...root.children].map(node => [node.dataset.key, node]));
     const children = [];
     const rows = model.rows();
+    const expanded = model.all_expanded();
+    toggle_button.title = expanded ? '收起全部' : '展开全部';
+    toggle_button.setAttribute('aria-label', toggle_button.title);
+    toggle_button.setAttribute('aria-expanded', String(expanded));
+    toggle_button.disabled = !rows.some(row => row.children.length);
+    chevrons.setAttribute('d', expanded ? 'm7 11 5-5 5 5M7 18l5-5 5 5' : 'm7 6 5 5 5-5M7 13l5 5 5-5');
     root.tabIndex = rows.length ? -1 : 0;
     for (const row of rows) {
       const existing = previous.get(row.key);
@@ -71,7 +84,7 @@ export function create_catalog_tree({ root, model, get_selected, on_select, on_o
     } else { model.navigate(event.key); render(); }
     focus();
   });
-  return { render, sync_selection() {
+  return { toggle_button, render, sync_selection() {
     const rows = [...root.querySelectorAll('[role="treeitem"]')];
     if (!rows.some(node => node.dataset.key === model.state.focused)) { render(); return; }
     for (const node of rows) {
