@@ -8,11 +8,15 @@
 
 芥子是一个本地运行的前端预览与检查工具。将真实页面、组件和不同状态并排展示，在画布中浏览、比较、调整尺寸，再从 DOM 节点定位到源码。
 
-[快速开始](#快速开始) · [使用白板](#使用白板) · [声明预览](#声明预览) · [接入项目](#接入项目) · [使用指南](docs/guide.md)
+[快速开始](#快速开始) · [使用白板](#使用白板) · [声明预览](#声明预览) · [使用指南](docs/guide.md)
 
 ![芥子白板预览：左侧为页面与组件目录，中间并排展示真实页面和弹窗，右侧展示 Frame 信息](docs/images/whiteboard.png)
 
 *FindRSS 管理后台示例：26 个页面、21 个组件，展示 mock 数据、空状态和独立弹窗。*
+
+![画布详情：选中搜索输入框，右侧展示节点源码预览与节点详情](docs/images/frame-detail.png)
+
+*画布详情示例：选中搜索输入框，查看对应源码、节点语义标识与使用位置。*
 
 ## 能做什么
 
@@ -76,27 +80,6 @@ export const _Preview = [
 `name` 是展示名称，`path` 是唯一身份并决定目录层级；`render()` 返回视图或创建视图的工厂，每次挂载可创建独立 Model。扫描时只读取元数据，不执行模块或渲染函数。
 
 这是内置适配器使用的声明方式；其他项目的扫描和挂载由各自适配器负责。详见[预览声明规范](docs/guide.md#声明预览)。
-
-## 接入项目
-
-启动开发服务后，点击顶部「添加项目」，选择类型并填写本机绝对目录。已添加项目可从顶部下拉框切换。
-
-| 适配器 | 源码目录 | 说明 |
-| --- | --- | --- |
-| `demo` | 留空即可使用内置示例 | 原生 DOM，独立 Model / View |
-| `xiaoxunrss` | 小讯项目根目录 | [接入说明](adapters/xiaoxunrss/README.md) |
-| `findrss-admin` | FindRSS 项目的 `admin/` | [接入说明](adapters/findrss-admin/README.md) |
-| `wx-channels` | Download & Manage 的 `frontend/` | [接入说明](adapters/wx-channels/README.md) |
-
-也可从命令行指定适配器与源码目录，例如将下面路径替换为自己的项目目录：
-
-```sh
-npm run dev -- --adapter findrss-admin --source /path/to/findrss-worker/admin
-```
-
-外部项目需先安装自己的依赖，并通过 `--source` 显式接入。默认安装、构建和测试只使用本仓库及其 npm 依赖。
-
-项目清单保存在不入 Git 的 `project.json` 中，链接使用持久项目 ID。每个开发服务同一时间打开一个项目，切换会影响该服务的其他标签页。项目管理、刷新、深链接和自定义适配器见[使用指南](docs/guide.md)。
 
 ## 开发与验证
 
