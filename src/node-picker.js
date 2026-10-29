@@ -1,6 +1,6 @@
 import { rect_from_points, intersect_rect, collect_selected_nodes, collect_clicked_node, NodeSelectionModel } from './node-selection.js';
 
-export function create_node_picker({ stage, keyboard_root, get_preview, frame, on_select, on_mode, on_reveal }) {
+export function create_node_picker({ stage, keyboard_root, get_preview, frame, on_select, on_mode, on_reveal, on_pick }) {
   const document = stage.ownerDocument;
   const model = NodeSelectionModel(frame);
   const overlay = document.createElement('div'); overlay.dataset.n = 'node-picker-overlay'; overlay.className = 'node-picker-overlay';
@@ -39,6 +39,12 @@ export function create_node_picker({ stage, keyboard_root, get_preview, frame, o
   }
   function render_selection(location) {
     render_highlight(); on_select?.(model.state.current?.result || null, location);
+  }
+  // 仅在用户主动选择时通知标注流程；刷新高亮、父级导航不触发。
+  function notify_pick(location) {
+    const current = model.state.current;
+    if (!current) return;
+    on_pick?.(current.result, location, current.rect, current.result.elements);
   }
   function refresh() {
     if (gesture || !model.state.current) return;
@@ -85,12 +91,14 @@ export function create_node_picker({ stage, keyboard_root, get_preview, frame, o
       rect = intersect_rect(selected.elements[0].getBoundingClientRect(), viewport);
     }
     model.select(preview.root, preview.host, rect, selected, viewport); render_selection();
+    if (model.state.current) notify_pick();
   }, true);
   listen(stage, 'pointercancel', event => { if (gesture?.pointer === event.pointerId) { prevent(event); clear(); } }, true);
   listen(stage, 'click', event => { if (!controls.contains(event.target) && suppress_click) { prevent(event); suppress_click = false; } }, true);
   listen(stage, 'pointerdown', () => { suppress_click = false; }, false);
   listen(keyboard_root, 'keydown', event => {
     if (event.target.closest?.('dialog[open]')) return;
+    if (event.target.closest?.('[data-n="annotation-composer"]')) return;
     if (!active) return;
     if (event.key === 'Alt') { modifier = true; arm(); }
     if (event.key === 'Escape' && (gesture || model.state.current || enabled)) { prevent(event); clear(); set_enabled(false); }
@@ -109,7 +117,7 @@ export function create_node_picker({ stage, keyboard_root, get_preview, frame, o
       if (!active || destroyed || !preview || preview.host.dataset.status !== 'mounted') return false;
       const viewport = intersect_rect(stage.getBoundingClientRect(), preview.host.getBoundingClientRect());
       if (!model.select_source(preview.root, preview.host, location, viewport, { style_for: node => document.defaultView.getComputedStyle?.(node) })) return false;
-      release(); render_selection(location); on_reveal?.(model.state.current.rect); refresh(); return true;
+      release(); render_selection(location); notify_pick(location); on_reveal?.(model.state.current.rect); refresh(); return true;
     },
     set_active(value) { active = Boolean(value); if (!active) { clear(); set_enabled(false); modifier = false; } arm(); },
     destroy() { if (destroyed) return; destroyed = true; release(); listeners.forEach(remove => remove()); stage.classList.remove('picking-nodes'); get_preview()?.host.removeAttribute('data-picking'); overlay.remove(); model.clear(); },

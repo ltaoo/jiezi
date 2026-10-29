@@ -168,3 +168,51 @@ input, select { border: 1px solid var(--frui-color-border); border-radius: var(-
   .detail-actions select { max-width: 160px; }
   .picked-nodes-panel, .detail-source-panel { top: 208px; bottom: 88px; }
 }
+
+/* 标注：浮动输入框、引用菜单、节点徽标与 Prompt。 */
+.annotation-composer { position: fixed; z-index: 60; width: min(340px, calc(100vw - 16px)); display: flex; flex-direction: column; gap: var(--frui-space-2); padding: var(--frui-space-3); pointer-events: auto; border: 1px solid var(--frui-color-border-strong); border-radius: var(--frui-radius-card); background: var(--frui-color-surface); color: var(--frui-color-text); box-shadow: var(--frui-shadow-card); }
+.annotation-composer-head { display: flex; align-items: center; gap: var(--frui-space-2); }
+.annotation-composer-order { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: var(--frui-radius-pill); background: var(--frui-color-primary); color: var(--frui-color-on-primary); font: 11px/1 var(--agent-font-mono); }
+.annotation-composer-node { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--frui-color-muted); font: 12px var(--agent-font-mono); }
+.annotation-composer-close { flex-shrink: 0; padding: 0 6px; font-size: 16px; line-height: 1; }
+.annotation-composer-editor { position: relative; min-height: 64px; max-height: 40vh; overflow: auto; border: 1px solid var(--frui-color-border); border-radius: var(--frui-radius-control); background: var(--frui-color-canvas); }
+.annotation-composer-editor .ProseMirror { min-height: 64px; padding: var(--frui-space-2); outline: none; white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--frui-font-size); line-height: 1.6; }
+.annotation-composer-editor .ProseMirror p { margin: 0 0 var(--frui-space-1); }
+.annotation-composer-editor .ProseMirror p:last-child { margin-bottom: 0; }
+.annotation-editor-placeholder { position: absolute; inset: 0; padding: var(--frui-space-2); color: var(--frui-color-placeholder); pointer-events: none; white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--frui-font-size); line-height: 1.6; }
+.annotation-ref { color: var(--frui-color-primary); font-family: var(--agent-font-mono); }
+.annotation-input { width: 100%; min-height: 64px; max-height: 40vh; resize: vertical; padding: var(--frui-space-2); border: 0; border-radius: 0; background: transparent; color: inherit; font: var(--frui-font-size)/1.6 var(--frui-font-family); }
+.annotation-composer-hint { color: var(--frui-color-muted); font-size: 11px; }
+.annotation-actions { display: flex; justify-content: flex-end; gap: var(--frui-space-2); }
+.annotation-ref-menu { position: fixed; z-index: 70; min-width: 180px; max-height: 220px; overflow: auto; padding: var(--frui-space-1); border: 1px solid var(--frui-color-border); border-radius: var(--frui-radius-control); background: var(--frui-color-surface-raised); box-shadow: var(--frui-shadow-card); }
+.annotation-ref-option { display: block; width: 100%; text-align: left; padding: 4px 6px; border-radius: var(--frui-radius-sm); font-size: 12px; }
+.annotation-ref-option[aria-selected="true"] { background: var(--frui-color-selected); color: var(--frui-color-primary); }
+.annotation-pins { position: fixed; inset: 0; pointer-events: none; }
+.annotation-pin { position: fixed; transform: translate(-50%, -50%); display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 5px; pointer-events: auto; border: 2px solid var(--frui-color-surface); border-radius: var(--frui-radius-pill); background: var(--frui-color-primary); color: var(--frui-color-on-primary); font: 11px/1 var(--agent-font-mono); box-shadow: var(--frui-shadow-card); }
+.annotation-pin:hover { background: var(--frui-color-primary-hover); }
+.annotation-list-wrap { flex-shrink: 0; max-height: 38%; overflow: auto; padding: var(--frui-space-2) var(--frui-space-4); border-bottom: 1px solid var(--frui-color-border-soft); scrollbar-width: thin; }
+.annotation-list-heading { margin-bottom: var(--frui-space-1); }
+.annotation-item { padding: var(--frui-space-2) 0; border-top: 1px solid var(--frui-color-border-soft); overflow-wrap: anywhere; }
+.annotation-item:first-child { border-top: 0; }
+.annotation-item-head { display: flex; align-items: center; gap: var(--frui-space-2); }
+.annotation-item-order { color: var(--frui-color-primary); font: 11px var(--agent-font-mono); }
+.annotation-item-node { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--frui-color-muted); font-size: 11px; }
+.annotation-item-actions { display: flex; gap: var(--frui-space-1); }
+.annotation-item-actions button { padding: 2px 6px; font-size: 11px; }
+.annotation-item-body { margin: var(--frui-space-1) 0 0; white-space: pre-wrap; }
+.annotation-prompt-open { white-space: nowrap; background: var(--frui-color-primary); color: var(--frui-color-on-primary); }
+.annotation-prompt-open:hover { background: var(--frui-color-primary-hover); }
+.annotation-prompt-open:disabled { opacity: .5; cursor: default; }
+.annotation-prompt-dialog { pointer-events: auto; width: min(760px, calc(100vw - 48px)); max-height: calc(100dvh - 48px); padding: 0; overflow: hidden; border: 1px solid var(--frui-color-border); border-radius: var(--frui-radius-card); background: var(--frui-color-surface); color: var(--frui-color-text); box-shadow: var(--frui-shadow-card); }
+.annotation-prompt-dialog[open] { display: flex; flex-direction: column; }
+.annotation-prompt-dialog::backdrop { background: var(--frui-color-overlay); }
+.annotation-prompt-heading { flex-shrink: 0; gap: var(--frui-space-2); }
+.annotation-prompt-heading h2 { margin: 0; font-size: var(--frui-font-size); }
+.annotation-prompt-heading-actions { display: flex; gap: var(--frui-space-2); }
+.annotation-prompt-code { flex: 1; min-height: 0; margin: 0; padding: var(--frui-space-4); overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--frui-color-canvas); font: 12px/1.7 var(--agent-font-mono); }
+.annotation-prompt-dialog > p { margin: 0; padding: var(--frui-space-2) var(--frui-space-4); }
+
+
+@media (max-width: 600px) {
+  .annotation-composer { width: calc(100vw - 16px); }
+}

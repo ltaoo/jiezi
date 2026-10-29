@@ -368,7 +368,7 @@ let space_pressed = false;
 window.addEventListener('keydown', event => {
   if (event.defaultPrevented || event.target.closest?.('dialog[open]')) return;
   if (state.detail && event.key === 'Escape' && !project_model.state.visible) { event.preventDefault(); if (!detail_tools?.escape()) close_detail(); return; }
-  if (project_model.state.visible || event.target.closest('[data-n="direct-preview"], [role="tree"], [data-n="detail-source-panel"], [data-n="picked-nodes-panel"]') || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName)) return;
+  if (project_model.state.visible || event.target.closest('[data-n="direct-preview"], [role="tree"], [data-n="detail-source-panel"], [data-n="picked-nodes-panel"], [data-n="annotation-composer"]') || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName)) return;
   if (event.code === 'Space' && !event.target.closest('button')) { event.preventDefault(); space_pressed = true; workspace.dataset.tool = 'hand'; }
   else if (event.key.toLowerCase() === 'f') { event.preventDefault(); fit(); }
   else if (event.key === '+' || event.key === '=') { event.preventDefault(); zoom(1.2); }

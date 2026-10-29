@@ -1,4 +1,6 @@
 import { create_node_picker } from './node-picker.js';
+import { create_annotation_composer } from './annotation-composer.js';
+import { parts_text } from './annotation.model.js';
 import { NodeSourceModel } from './node-source.model.js';
 
 export function create_frame_detail({ document, model, project, project_model, stage, get_preview, on_close, on_resize, on_reveal, on_refresh, on_mode_change }) {
@@ -27,6 +29,33 @@ export function create_frame_detail({ document, model, project, project_model, s
     const error = part('p', 'detail-route-error', 'detail-route-error', detail.error); error.setAttribute('role', 'alert'); root.append(error);
     return { root, refresh_selection() {}, escape() { return false; }, destroy() { unsubscribe_refresh(); root.remove(); } };
   }
+  const annotations = model.annotation_model(frame.id);
+  const pin_targets = new Map();
+  const pin_nodes = new Map();
+  let pending_node = null, pending_element = null;
+  const annotation_orders = () => annotations.state.items.map(item => ({ order: item.order, label: node_label(item.node) }));
+  function node_label(node) { return node?.n || node?.tag || '节点'; }
+
+  const pins = part('div', 'annotation-pins', 'annotation-pins'); root.append(pins);
+  const prompt_button = button('annotation-prompt-open', '', open_prompt); prompt_button.className = 'annotation-prompt-open';
+  const toolbar = document.querySelector('[data-n="board-toolbar"]');
+  if (toolbar) toolbar.append(prompt_button); else root.append(prompt_button);
+  const prompt_dialog = part('dialog', 'annotation-prompt-dialog', 'annotation-prompt-dialog'); prompt_dialog.setAttribute('aria-labelledby', 'annotation-prompt-title');
+  const prompt_heading = part('div', 'annotation-prompt-heading', 'picked-nodes-heading');
+  const prompt_title = part('h2', 'annotation-prompt-title', '', 'Prompt 预览'); prompt_title.id = 'annotation-prompt-title';
+  const prompt_actions = part('div', 'annotation-prompt-heading-actions', '');
+  prompt_actions.append(button('annotation-prompt-copy', '复制', copy_prompt), button('annotation-prompt-close', '关闭', close_prompt));
+  prompt_heading.append(prompt_title, prompt_actions);
+  const prompt_code = part('pre', 'annotation-prompt-code', 'annotation-prompt-code'); prompt_code.tabIndex = 0;
+  const prompt_status = part('p', 'annotation-prompt-status', 'muted'); prompt_status.setAttribute('role', 'status');
+  prompt_dialog.append(prompt_heading, prompt_code, prompt_status); root.append(prompt_dialog);
+  prompt_dialog.addEventListener('cancel', event => { event.preventDefault(); close_prompt(); });
+  prompt_dialog.addEventListener('close', () => { prompt_status.textContent = ''; });
+  prompt_dialog.addEventListener('click', event => { if (event.target === prompt_dialog) close_prompt(); });
+
+  const composer = create_annotation_composer({ document, window: document.defaultView, get_orders: annotation_orders, on_submit: submit_annotation });
+  root.append(composer.root);
+
   const actions = part('nav', 'detail-actions', 'detail-actions'); actions.setAttribute('aria-label', 'Frame 检查工具');
   const source_button = button('detail-source-toggle', '查看源码', () => { model.show_source(!detail.source_open); render_controls(); });
   const picker_button = button('pick-nodes-toggle', '', () => picker?.toggle());
@@ -49,6 +78,12 @@ export function create_frame_detail({ document, model, project, project_model, s
   const title = part('strong', 'picked-nodes-title', '', '节点详情');
   heading.append(title, button('picked-nodes-close', '关闭', () => { model.show_nodes(false); render_controls(); nodes_button.focus(); }));
   const status = part('div', 'picked-nodes-status', 'picked-nodes-status'); status.setAttribute('role', 'status');
+  const annotation_section = part('div', 'annotation-list-wrap', 'annotation-list-wrap');
+  const annotation_heading = part('div', 'annotation-list-heading', 'annotation-list-heading');
+  const annotation_title = part('strong', 'annotation-list-title', '', '标注 · 0');
+  annotation_heading.append(annotation_title);
+  const annotation_list = part('div', 'annotation-list', 'annotation-list');
+  annotation_section.append(annotation_heading, annotation_list);
   const content = part('div', 'picked-nodes-content', 'picked-nodes-content');
   const hint = part('p', 'picked-nodes-hint', 'muted');
   const parent_source = part('div', 'picked-parent-source-container');
@@ -128,7 +163,7 @@ export function create_frame_detail({ document, model, project, project_model, s
     row.append(part('code', name, 'source-path', source ? prefix + location : empty), copy);
     return row;
   }
-  content.append(hint, parent_source, source_preview, list, json); panel.append(heading, status, content); root.append(panel);
+  content.append(hint, parent_source, source_preview, list, json); panel.append(heading, annotation_section, status, content); root.append(panel);
   function render_controls() {
     source_panel.hidden = !detail.source_open; panel.hidden = !detail.nodes_visible;
     source_button.setAttribute('aria-expanded', String(detail.source_open)); source_button.setAttribute('aria-controls', source_panel.id);
@@ -160,17 +195,126 @@ export function create_frame_detail({ document, model, project, project_model, s
     if (result?.payload.truncated) status.textContent = `找到 ${result.payload.total} 个节点，显示前 ${result.elements.length} 个。`;
     render_controls();
   }
+  function render_annotations() {
+    const items = annotations.state.items;
+    annotation_title.textContent = `标注 · ${items.length}`;
+    annotation_section.hidden = items.length === 0;
+    annotation_list.replaceChildren();
+    for (const item of items) {
+      const row = part('div', 'annotation-item', 'annotation-item');
+      const head = part('div', 'annotation-item-head', 'annotation-item-head');
+      head.append(part('span', 'annotation-item-order', 'annotation-item-order', `#${item.order}`), part('span', 'annotation-item-node', 'annotation-item-node', node_label(item.node)));
+      const actions = part('div', 'annotation-item-actions', 'annotation-item-actions');
+      actions.append(button('annotation-item-edit', '编辑', () => edit_annotation(item.order)), button('annotation-item-delete', '删除', () => delete_annotation(item.order)));
+      row.append(head, actions, part('p', 'annotation-item-body', 'annotation-item-body', parts_text(item.parts) || '（空）'));
+      annotation_list.append(row);
+    }
+  }
+  function render_pins() {
+    const active = new Set();
+    for (const item of annotations.state.items) {
+      active.add(item.order);
+      const element = pin_targets.get(item.order);
+      if (!element || element.isConnected === false) { pin_nodes.get(item.order)?.remove(); pin_nodes.delete(item.order); continue; }
+      let pin = pin_nodes.get(item.order);
+      if (!pin) {
+        pin = button('annotation-pin', '', () => edit_annotation(item.order)); pin.className = 'annotation-pin';
+        pin_nodes.set(item.order, pin); pins.append(pin);
+      }
+      const rect = element.getBoundingClientRect();
+      pin.textContent = String(item.order);
+      pin.title = `编辑标注 #${item.order} · ${node_label(item.node)}`;
+      pin.style.left = `${rect.left}px`; pin.style.top = `${rect.top}px`;
+    }
+    for (const [order, pin] of pin_nodes) if (!active.has(order)) { pin.remove(); pin_nodes.delete(order); }
+  }
+  function render_prompt_button() {
+    const count = annotations.state.items.length;
+    prompt_button.textContent = `生成 Prompt · ${count} 条标注`;
+    prompt_button.disabled = count === 0;
+  }
+  function open_prompt() {
+    if (!annotations.state.items.length) return;
+    prompt_code.textContent = annotations.prompt(frame);
+    prompt_status.textContent = '';
+    if (!prompt_dialog.open) {
+      if (typeof prompt_dialog.showModal === 'function') prompt_dialog.showModal();
+      else prompt_dialog.setAttribute('open', '');
+    }
+  }
+  function close_prompt() {
+    if (typeof prompt_dialog.close === 'function') prompt_dialog.close();
+    else prompt_dialog.removeAttribute('open');
+  }
+  async function copy_prompt() {
+    try {
+      await document.defaultView.navigator.clipboard.writeText(prompt_code.textContent);
+      prompt_status.textContent = '已复制 Prompt，可直接粘贴给 Agent。';
+    } catch {
+      prompt_status.textContent = '复制失败，请手动选中文本复制。';
+    }
+  }
+  function submit_annotation(parts, { mode, order } = {}) {
+    if (mode === 'edit' && order != null) annotations.update(order, parts);
+    else {
+      const item = annotations.add({ node: pending_node, parts });
+      if (pending_element) pin_targets.set(item.order, pending_element);
+    }
+    pending_node = null; pending_element = null;
+    picker?.clear();
+    composer.close();
+    render_annotations(); render_pins(); render_prompt_button();
+  }
+  function edit_annotation(order) {
+    const item = annotations.get(order);
+    if (!item) return;
+    pending_node = item.node;
+    pending_element = pin_targets.get(order) || null;
+    const rect = pending_element && pending_element.isConnected !== false
+      ? pending_element.getBoundingClientRect()
+      : { left: 320, top: 140, right: 420, bottom: 180, width: 100, height: 40 };
+    composer.open({ mode: 'edit', node: item.node, order, rect, parts: item.parts });
+  }
+  function delete_annotation(order) {
+    annotations.remove(order); pin_targets.delete(order);
+    if (composer.is_open() && composer.state.order === order) composer.close();
+    render_annotations(); render_pins(); render_prompt_button();
+  }
   let picker;
   if (frame.preview === 'direct') picker = create_node_picker({ stage, keyboard_root: document, get_preview, frame,
-    on_mode(enabled) { model.set_picking(enabled); render_controls(); on_mode_change(); },
+    on_mode(enabled) { model.set_picking(enabled); render_controls(); on_mode_change(); if (!enabled) composer.close(); },
     on_select(result, location) { model.set_node_selection(result); render_selection(); void source_model.select(result?.payload, location); }, on_reveal,
+    on_pick(result, location, rect, elements) {
+      const node = result?.payload?.nodes?.[0];
+      if (!node) return;
+      pending_node = { ...node, total: result.payload.total };
+      pending_element = elements?.[0] || null;
+      composer.open({ mode: 'create', node: pending_node, rect: rect || pending_element?.getBoundingClientRect() || null, parts: [] });
+    },
   });
   if (detail.picking) picker?.toggle();
-  render_controls(); render_selection(); render_source_preview();
+  render_controls(); render_selection(); render_source_preview(); render_annotations(); render_pins(); render_prompt_button();
   return {
     root,
-    refresh_selection() { picker?.refresh(); },
-    escape() { if (!detail.source_open) return false; model.show_source(false); render_controls(); source_button.focus(); return true; },
-    destroy() { picker?.destroy(); unsubscribe_source(); unsubscribe_refresh(); if (source_dialog.open) source_dialog.close(); void source_model.select(null); root.remove(); },
+    refresh_selection() {
+      picker?.refresh();
+      if (composer.is_open()) {
+        const rect = pending_element && pending_element.isConnected !== false ? pending_element.getBoundingClientRect() : null;
+        if (rect) composer.reposition(rect);
+      }
+      render_pins();
+    },
+    escape() {
+      if (composer.is_open()) { composer.cancel(); return true; }
+      if (!detail.source_open) return false;
+      model.show_source(false); render_controls(); source_button.focus(); return true;
+    },
+    destroy() {
+      composer.destroy(); picker?.destroy(); unsubscribe_source(); unsubscribe_refresh();
+      if (source_dialog.open) source_dialog.close();
+      if (prompt_dialog.open) close_prompt();
+      prompt_button.remove();
+      void source_model.select(null); root.remove();
+    },
   };
 }

@@ -16,5 +16,13 @@
     "esbuild": "^0.28.2",
     "linkedom": "^0.18.13",
     "postcss": "^8.5.30"
+  },
+  "dependencies": {
+    "prosemirror-commands": "^1.7.2",
+    "prosemirror-history": "^1.5.1",
+    "prosemirror-keymap": "^1.2.3",
+    "prosemirror-model": "^1.25.12",
+    "prosemirror-state": "^1.4.4",
+    "prosemirror-view": "^1.42.8"
   }
 }

@@ -1,5 +1,6 @@
 import { arrange_frames, fit_frames, frame_group_bounds, separate_frame_groups, zoom_at } from './geometry.js';
 import { CatalogTreeModel } from './catalog-tree.model.js';
+import { AnnotationModel } from './annotation.model.js';
 import { project_url, frame_url, read_project_route } from './project-route.js';
 
 export function BoardModel(catalog, storage, project_id = 'default', project_uid = project_id) {
@@ -15,10 +16,16 @@ export function BoardModel(catalog, storage, project_id = 'default', project_uid
   const state = { frames, filter: 'all', query: '', selected: null, detail: null, theme: 'light', tool: 'select', view: { x: 50, y: 60, scale: 0.36 } };
   let board_view;
   const tree = CatalogTreeModel(frames);
+  // 同一 Frame 的标注在开关详情、切换路由后保留；replace_catalog 不清理。
+  const annotation_models = new Map();
   const matches = frame => tree.matches(frame.id, state.query);
   const group_area = group => ({ ...group.bounds, y: group.bounds.y + 38, height: group.bounds.height - 38 });
   return {
     state, tree, matches,
+    annotation_model(frame_id) {
+      if (!annotation_models.has(frame_id)) annotation_models.set(frame_id, AnnotationModel());
+      return annotation_models.get(frame_id);
+    },
     project_url() { return project_url(project_uid); },
     frame_url(id) { return frame_url(project_uid, id); },
     replace_catalog(next_catalog) {
