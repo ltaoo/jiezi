@@ -1,5 +1,5 @@
 <p align="center" data-n="readme-brand">
-  <img src="src/logo.svg" width="72" height="72" alt="芥子 Logo：开放画框与金色芥子" data-n="readme-logo">
+  <img src="public/logo.svg" width="72" height="72" alt="芥子 Logo：开放画框与金色芥子" data-n="readme-logo">
 </p>
 
 # 芥子 · jiezi

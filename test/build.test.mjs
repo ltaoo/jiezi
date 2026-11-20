@@ -20,7 +20,7 @@ test('默认构建输出品牌 Logo 和 favicon，详情地址引用的图标可
     const logo = await fetch(new URL(favicon.getAttribute('href'), page.url));
     assert.equal(logo.status, 200);
     assert.equal(logo.headers.get('content-type'), 'image/svg+xml');
-    assert.equal(await logo.text(), await readFile(join(root, 'src/logo.svg'), 'utf8'));
+    assert.equal(await logo.text(), await readFile(join(root, 'public/logo.svg'), 'utf8'));
   } finally {
     server.closeAllConnections();
     await new Promise(resolve => server.close(resolve));

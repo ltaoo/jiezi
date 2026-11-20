@@ -50,7 +50,7 @@ export async function build_project(options = options_from_args()) {
   });
   for (const asset of adapter.assets || []) await cp(asset.from, join(dist, asset.to), { recursive: true });
   await cp(join(root, 'index.html'), join(dist, 'index.html'));
-  await cp(join(root, 'src/logo.svg'), join(dist, 'jiezi-logo.svg'));
+  await cp(join(root, 'public/logo.svg'), join(dist, 'jiezi-logo.svg'));
   await adapter.after_build?.(dist);
   await cp(adapter.logo, join(dist, 'project-logo.svg'));
   await writeFile(join(dist, 'catalog.json'), JSON.stringify(catalog));
